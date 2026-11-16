@@ -134,7 +134,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF0E1224), Color(0xFF1A1542), Color(0xFF0B0E17))
+                    listOf(Color(0xFFFFFFFF), Color(0xFFF3F6FF), Color(0xFFEDE9FF))
                 )
             ),
         contentAlignment = Alignment.Center
@@ -151,14 +151,14 @@ fun SplashScreen(onFinished: () -> Unit) {
             Text(
                 text = strings.appName,
                 style = MaterialTheme.typography.displaySmall,
-                color = Color.White,
+                color = Color(0xFF111827),
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = strings.tagline,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFFC7D2FE)
+                color = FlowIndigo
             )
         }
     }

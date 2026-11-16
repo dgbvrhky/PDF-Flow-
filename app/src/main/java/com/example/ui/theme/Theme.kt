@@ -20,7 +20,7 @@ enum class ThemeMode(val storageKey: String) {
     DARK("dark");
 
     companion object {
-        fun fromKey(key: String?): ThemeMode = entries.firstOrNull { it.storageKey == key } ?: SYSTEM
+        fun fromKey(key: String?): ThemeMode = entries.firstOrNull { it.storageKey == key } ?: LIGHT
     }
 }
 
@@ -82,7 +82,7 @@ val PdfFlowShapes = Shapes(
 
 @Composable
 fun PdfFlowTheme(
-    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    themeMode: ThemeMode = ThemeMode.LIGHT,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
