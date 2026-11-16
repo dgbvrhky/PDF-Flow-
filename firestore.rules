@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Zero-Trust Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function hasValidTimestampsOnCreate(data) {
+      return data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function hasValidTimestampsOnUpdate(data) {
+      return data.createdAt == existing().createdAt &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- Entity Validation Helpers ---
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 160)) &&
+             (!('phoneNumber' in data) || data.phoneNumber == null || (data.phoneNumber is string && data.phoneNumber.size() <= 32)) &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             data.planTier in ['free', 'premium'] &&
+             data.authProvider in ['google', 'phone'];
+    }
+
+    function isValidUserSettings(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.languageCode is string && data.languageCode.size() >= 2 && data.languageCode.size() <= 10 &&
+             data.themeMode in ['system', 'light', 'dark'] &&
+             data.defaultViewerMode in ['continuous', 'single', 'horizontal'] &&
+             data.defaultPageLayout in ['fit_width', 'fit_page'] &&
+             data.autoBackupEnabled is bool &&
+             data.appLockEnabled is bool &&
+             data.biometricEnabled is bool &&
+             data.notificationsEnabled is bool &&
+             data.downloadSubfolder is string && data.downloadSubfolder.size() >= 1 && data.downloadSubfolder.size() <= 120;
+    }
+
+    function isValidPdfDocumentRecord(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 200 &&
+             data.mimeType is string && data.mimeType.size() >= 1 && data.mimeType.size() <= 100 &&
+             data.sizeBytes is int && data.sizeBytes >= 0 &&
+             data.pageCount is int && data.pageCount >= 0 &&
+             data.folderName is string && data.folderName.size() >= 1 && data.folderName.size() <= 100 &&
+             (!('localUri' in data) || data.localUri == null || (data.localUri is string && data.localUri.size() <= 500)) &&
+             (!('storagePath' in data) || data.storagePath == null || (data.storagePath is string && data.storagePath.size() <= 500)) &&
+             data.isFavorite is bool &&
+             data.isTrashed is bool &&
+             data.isEncrypted is bool &&
+             (!('summary' in data) || data.summary == null || (data.summary is string && data.summary.size() <= 4000)) &&
+             (!('tags' in data) || data.tags == null || (data.tags is list && data.tags.size() <= 10 && (data.tags.size() == 0 || data.tags[0] is string))) &&
+             (!('lastOpenedAt' in data) || data.lastOpenedAt == null || (data.lastOpenedAt is timestamp && data.lastOpenedAt <= request.time));
+    }
+
+    function isValidFavoriteDocument(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             isValidId(data.documentId) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 200 &&
+             data.sizeBytes is int && data.sizeBytes >= 0 &&
+             data.pageCount is int && data.pageCount >= 0;
+    }
+
+    function isValidBackupRecord(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.backupName is string && data.backupName.size() >= 1 && data.backupName.size() <= 150 &&
+             data.documentCount is int && data.documentCount >= 0 &&
+             data.totalBytes is int && data.totalBytes >= 0 &&
+             data.status in ['in_progress', 'completed', 'failed'] &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 100 &&
+             (!('summary' in data) || data.summary == null || (data.summary is string && data.summary.size() <= 500));
+    }
+
+    // --- User-Scoped Collections ---
+    match /users/{userId} {
+      allow read, write: if false;
+
+      match /profile/{profileId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(profileId);
+        allow create: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().keys().hasAll(['userId', 'displayName', 'planTier', 'authProvider', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'displayName', 'email', 'phoneNumber', 'photoUrl', 'planTier', 'authProvider', 'createdAt', 'updatedAt']) &&
+                         hasValidTimestampsOnCreate(incoming()) &&
+                         isValidUserProfile(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().userId == existing().userId &&
+                         hasValidTimestampsOnUpdate(incoming()) &&
+                         isValidUserProfile(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'phoneNumber', 'photoUrl', 'planTier', 'authProvider', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(profileId);
+      }
+
+      match /settings/{settingId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(settingId);
+        allow create: if isOwner(userId) &&
+                         isValidId(settingId) &&
+                         incoming().keys().hasAll(['userId', 'languageCode', 'themeMode', 'defaultViewerMode', 'defaultPageLayout', 'autoBackupEnabled', 'appLockEnabled', 'biometricEnabled', 'notificationsEnabled', 'downloadSubfolder', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'languageCode', 'themeMode', 'defaultViewerMode', 'defaultPageLayout', 'autoBackupEnabled', 'appLockEnabled', 'biometricEnabled', 'notificationsEnabled', 'downloadSubfolder', 'createdAt', 'updatedAt']) &&
+                         hasValidTimestampsOnCreate(incoming()) &&
+                         isValidUserSettings(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(settingId) &&
+                         incoming().userId == existing().userId &&
+                         hasValidTimestampsOnUpdate(incoming()) &&
+                         isValidUserSettings(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['languageCode', 'themeMode', 'defaultViewerMode', 'defaultPageLayout', 'autoBackupEnabled', 'appLockEnabled', 'biometricEnabled', 'notificationsEnabled', 'downloadSubfolder', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(settingId);
+      }
+
+      match /documents/{documentId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(documentId);
+        allow create: if isOwner(userId) &&
+                         isValidId(documentId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'fileName', 'mimeType', 'sizeBytes', 'pageCount', 'folderName', 'isFavorite', 'isTrashed', 'isEncrypted', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'fileName', 'mimeType', 'sizeBytes', 'pageCount', 'folderName', 'localUri', 'storagePath', 'isFavorite', 'isTrashed', 'isEncrypted', 'summary', 'tags', 'lastOpenedAt', 'createdAt', 'updatedAt']) &&
+                         hasValidTimestampsOnCreate(incoming()) &&
+                         isValidPdfDocumentRecord(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(documentId) &&
+                         incoming().userId == existing().userId &&
+                         hasValidTimestampsOnUpdate(incoming()) &&
+                         isValidPdfDocumentRecord(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'fileName', 'mimeType', 'sizeBytes', 'pageCount', 'folderName', 'localUri', 'storagePath', 'isFavorite', 'isTrashed', 'isEncrypted', 'summary', 'tags', 'lastOpenedAt', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(documentId);
+      }
+
+      match /favorites/{favoriteId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(favoriteId);
+        allow create: if isOwner(userId) &&
+                         isValidId(favoriteId) &&
+                         incoming().keys().hasAll(['userId', 'documentId', 'title', 'fileName', 'sizeBytes', 'pageCount', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'documentId', 'title', 'fileName', 'sizeBytes', 'pageCount', 'createdAt', 'updatedAt']) &&
+                         hasValidTimestampsOnCreate(incoming()) &&
+                         isValidFavoriteDocument(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(favoriteId) &&
+                         incoming().userId == existing().userId &&
+                         hasValidTimestampsOnUpdate(incoming()) &&
+                         isValidFavoriteDocument(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'fileName', 'sizeBytes', 'pageCount', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(favoriteId);
+      }
+
+      match /backups/{backupId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(backupId);
+        allow create: if isOwner(userId) &&
+                         isValidId(backupId) &&
+                         incoming().keys().hasAll(['userId', 'backupName', 'documentCount', 'totalBytes', 'status', 'deviceName', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'backupName', 'documentCount', 'totalBytes', 'status', 'deviceName', 'summary', 'createdAt', 'updatedAt']) &&
+                         hasValidTimestampsOnCreate(incoming()) &&
+                         isValidBackupRecord(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(backupId) &&
+                         incoming().userId == existing().userId &&
+                         existing().status == 'in_progress' &&
+                         hasValidTimestampsOnUpdate(incoming()) &&
+                         isValidBackupRecord(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['documentCount', 'totalBytes', 'status', 'summary', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(backupId);
+      }
+    }
+  }
+}

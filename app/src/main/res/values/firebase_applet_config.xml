@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="firestore_database_id" translatable="false">ai-studio-android-pdfflow-4e87886e-c604-4ecf-be9e-d6a5cb276ce5</string>
+    <string name="recaptcha_site_key" translatable="false">6LfGUyMuAAAAAGriv0ylWNKtR_zCCA7jDmljOBBz</string>
+</resources>

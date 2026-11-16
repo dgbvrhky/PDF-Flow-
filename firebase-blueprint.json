@@ -1,0 +1,147 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated PDF Flow user profile and subscription tier metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "displayName": { "type": "string", "description": "User display name." },
+        "email": { "type": "string", "description": "Optional user email address." },
+        "phoneNumber": { "type": "string", "description": "Optional verified phone number." },
+        "photoUrl": { "type": "string", "description": "Optional profile photo URL." },
+        "planTier": { "type": "string", "enum": ["free", "premium"], "description": "User plan tier." },
+        "authProvider": { "type": "string", "enum": ["google", "phone"], "description": "Authentication provider." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "displayName", "planTier", "authProvider", "createdAt", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Synchronized PDF Flow user preferences and security settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "languageCode": { "type": "string", "description": "Selected ISO language code." },
+        "themeMode": { "type": "string", "enum": ["system", "light", "dark"], "description": "Selected app theme mode." },
+        "defaultViewerMode": { "type": "string", "enum": ["continuous", "single", "horizontal"], "description": "Default PDF reader scroll mode." },
+        "defaultPageLayout": { "type": "string", "enum": ["fit_width", "fit_page"], "description": "Default PDF page fit mode." },
+        "autoBackupEnabled": { "type": "boolean", "description": "Whether automatic cloud backup is enabled." },
+        "appLockEnabled": { "type": "boolean", "description": "Whether PIN app lock is enabled." },
+        "biometricEnabled": { "type": "boolean", "description": "Whether biometric unlock is enabled." },
+        "notificationsEnabled": { "type": "boolean", "description": "Whether task completion notifications are enabled." },
+        "downloadSubfolder": { "type": "string", "description": "Preferred subfolder inside Downloads." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": [
+        "userId",
+        "languageCode",
+        "themeMode",
+        "defaultViewerMode",
+        "defaultPageLayout",
+        "autoBackupEnabled",
+        "appLockEnabled",
+        "biometricEnabled",
+        "notificationsEnabled",
+        "downloadSubfolder",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PdfDocumentRecord": {
+      "title": "PdfDocumentRecord",
+      "description": "Cloud-synced metadata record for a user's PDF or converted document.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "title": { "type": "string", "description": "Display title of the document." },
+        "fileName": { "type": "string", "description": "File name including extension." },
+        "mimeType": { "type": "string", "description": "Document MIME type." },
+        "sizeBytes": { "type": "integer", "description": "Document file size in bytes." },
+        "pageCount": { "type": "integer", "description": "Total page count." },
+        "folderName": { "type": "string", "description": "Logical folder name." },
+        "localUri": { "type": "string", "description": "Optional device URI string." },
+        "storagePath": { "type": "string", "description": "Optional Firebase Storage object path." },
+        "isFavorite": { "type": "boolean", "description": "Whether the document is starred." },
+        "isTrashed": { "type": "boolean", "description": "Whether the document is in Recently Deleted." },
+        "isEncrypted": { "type": "boolean", "description": "Whether the document is password-protected." },
+        "summary": { "type": "string", "description": "Optional AI-generated document summary." },
+        "tags": { "type": "array", "description": "Optional bounded list of document tags." },
+        "lastOpenedAt": { "type": "string", "format": "date-time", "description": "Last opened server timestamp." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": [
+        "userId",
+        "title",
+        "fileName",
+        "mimeType",
+        "sizeBytes",
+        "pageCount",
+        "folderName",
+        "isFavorite",
+        "isTrashed",
+        "isEncrypted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FavoriteDocument": {
+      "title": "FavoriteDocument",
+      "description": "User favorite document bookmark entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "documentId": { "type": "string", "description": "ID of the referenced document." },
+        "title": { "type": "string", "description": "Document title." },
+        "fileName": { "type": "string", "description": "Document file name." },
+        "sizeBytes": { "type": "integer", "description": "Document size in bytes." },
+        "pageCount": { "type": "integer", "description": "Page count." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "documentId", "title", "fileName", "sizeBytes", "pageCount", "createdAt", "updatedAt"]
+    },
+    "BackupRecord": {
+      "title": "BackupRecord",
+      "description": "Cloud backup snapshot audit record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "backupName": { "type": "string", "description": "Human-readable backup label." },
+        "documentCount": { "type": "integer", "description": "Number of documents backed up." },
+        "totalBytes": { "type": "integer", "description": "Total size of backed-up metadata and payloads." },
+        "status": { "type": "string", "enum": ["in_progress", "completed", "failed"], "description": "Backup execution status." },
+        "deviceName": { "type": "string", "description": "Device model that created the backup." },
+        "summary": { "type": "string", "description": "Optional summary notes." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "backupName", "documentCount", "totalBytes", "status", "deviceName", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/profile/{profileId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and subscription status scoped strictly to userId."
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "User application settings scoped strictly to userId."
+    },
+    "/users/{userId}/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/PdfDocumentRecord" },
+      "description": "Synced PDF document metadata scoped strictly to userId."
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": { "$ref": "#/entities/FavoriteDocument" },
+      "description": "Starred PDF document references scoped strictly to userId."
+    },
+    "/users/{userId}/backups/{backupId}": {
+      "schema": { "$ref": "#/entities/BackupRecord" },
+      "description": "Backup history entries scoped strictly to userId."
+    }
+  }
+}

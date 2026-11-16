@@ -1,0 +1,6 @@
+{
+  "name": "PDF Flow",
+  "description": "All-in-one PDF workspace to read, create, scan, edit, convert, compress, organize, secure, and manage PDF documents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
