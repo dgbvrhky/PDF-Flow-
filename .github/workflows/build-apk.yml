@@ -26,28 +26,53 @@ jobs:
       - name: Configure Android SDK & Platforms
         run: |
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -n 1 || true)
-          if [ -z "$SDKMANAGER" ]; then
+          if [ ! -d "$SDK_ROOT" ]; then
+            SDK_ROOT="$HOME/android-sdk"
+            mkdir -p "$SDK_ROOT"
+          elif [ ! -w "$SDK_ROOT" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$SDK_ROOT" 2>/dev/null || {
+              SDK_ROOT="$HOME/android-sdk"
+              mkdir -p "$SDK_ROOT"
+            }
+          fi
+
+          SDKMANAGER=""
+          if [ -d "$SDK_ROOT/cmdline-tools" ]; then
+            SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -n 1 || true)
+          fi
+
+          if [ -z "$SDKMANAGER" ] || ! "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version >/dev/null 2>&1; then
+            SDK_ROOT="$HOME/android-sdk"
             mkdir -p "$SDK_ROOT/cmdline-tools"
             curl -sSL -o /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            rm -rf /tmp/cmdline-extract "$SDK_ROOT/cmdline-tools/latest"
             unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-extract
             mv /tmp/cmdline-extract/cmdline-tools "$SDK_ROOT/cmdline-tools/latest"
             rm -rf /tmp/cmdline-tools.zip /tmp/cmdline-extract
             SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            chmod +x "$SDKMANAGER"
           fi
-          chmod +x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-36" "platforms;android-36.1" "build-tools;36.0.0"
+
+          mkdir -p "$SDK_ROOT/licenses"
+          printf "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n" > "$SDK_ROOT/licenses/android-sdk-license"
+          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "$SDK_ROOT/licenses/android-sdk-preview-license"
+
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+          printf 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\n' | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null 2>&1 || true
+          printf 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\n' | "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-36" "platforms;android-36.1" "build-tools;36.0.0"
 
       - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
 
-      - name: Restore debug.keystore
+      - name: Restore debug.keystore and .env
         run: |
+          if [ ! -f .env ]; then
+            touch .env
+          fi
           if [ ! -f debug.keystore ]; then
             if [ -f debug.keystore.base64 ]; then
               base64 -d debug.keystore.base64 > debug.keystore
