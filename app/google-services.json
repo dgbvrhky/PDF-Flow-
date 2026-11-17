@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "612446336975",
+    "firebase_url": "https://pdf-flow-c5c24-default-rtdb.firebaseio.com",
+    "project_id": "pdf-flow-c5c24",
+    "storage_bucket": "pdf-flow-c5c24.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612446336975:android:d347abb49cb68f022304ba",
+        "android_client_info": {
+          "package_name": "com.pdfflow.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "612446336975-l3l4bahpqav84rfngc5hge86djc4mh30.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEZIii7BplRlTvae7FbO_5_cwLd1rVcP8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "612446336975-l3l4bahpqav84rfngc5hge86djc4mh30.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
