@@ -96,9 +96,7 @@ import com.example.ui.screens.UtilitiesScreen
 import com.example.ui.theme.PdfFlowTheme
 import com.example.ui.theme.ThemeMode
 import com.example.viewmodel.PdfFlowViewModel
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.auth
 
 class MainActivity : FragmentActivity() {
     private var incomingPdfUriState = mutableStateOf<Uri?>(null)
@@ -116,8 +114,10 @@ class MainActivity : FragmentActivity() {
             val context = LocalContext.current
             val prefsRepo = remember { PreferencesRepository(context.applicationContext) }
             val prefs by prefsRepo.preferences.collectAsStateWithLifecycle(initialValue = AppPreferences())
-            val currentUser by remember { Firebase.auth.authStateFlow() }.collectAsStateWithLifecycle(
-                initialValue = Firebase.auth.currentUser
+            val currentUser by remember {
+                AuthManager.safeAuthStateFlow(context.applicationContext)
+            }.collectAsStateWithLifecycle(
+                initialValue = AuthManager.currentUserOrNull(context.applicationContext)
             )
             val isDarkTheme = when (prefs.themeMode) {
                 ThemeMode.LIGHT -> false

@@ -13,6 +13,7 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -26,6 +27,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -65,6 +67,24 @@ fun FirebaseAuth.authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
 object AuthManager {
     private const val TAG = "PdfFlowAuth"
 
+    fun isFirebaseAvailable(context: Context): Boolean {
+        return try {
+            FirebaseApp.getApps(context).isNotEmpty() || FirebaseApp.initializeApp(context) != null
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun currentUserOrNull(context: Context): FirebaseUser? {
+        if (!isFirebaseAvailable(context)) return null
+        return runCatching { Firebase.auth.currentUser }.getOrNull()
+    }
+
+    fun safeAuthStateFlow(context: Context): Flow<FirebaseUser?> {
+        if (!isFirebaseAvailable(context)) return flowOf(null)
+        return runCatching { Firebase.auth.authStateFlow() }.getOrElse { flowOf(null) }
+    }
+
     @Suppress("DiscouragedApi")
     private fun resolveWebClientId(context: Context): String? {
         val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
@@ -79,7 +99,11 @@ object AuthManager {
         onUnauthenticated: () -> Unit,
         scope: CoroutineScope
     ) {
-        if (Firebase.auth.currentUser != null) {
+        if (!isFirebaseAvailable(context)) {
+            onUnauthenticated()
+            return
+        }
+        if (currentUserOrNull(context) != null) {
             onAuthSuccess()
             return
         }
@@ -124,6 +148,10 @@ object AuthManager {
         scope: CoroutineScope,
         onAuthCancelled: () -> Unit = {}
     ) {
+        if (!isFirebaseAvailable(context)) {
+            onAuthError("Firebase is not configured in this build. Please use Guest Mode or include google-services.json.")
+            return
+        }
         val clientId = resolveWebClientId(context) ?: run {
             onAuthError("Google Sign-In configuration missing: default_web_client_id not found.")
             return
@@ -162,6 +190,10 @@ object AuthManager {
         onAutoVerified: (PhoneAuthCredential) -> Unit,
         onError: (String) -> Unit
     ) {
+        if (!isFirebaseAvailable(activity)) {
+            onError("Firebase is not configured in this build. Please use Guest Mode or include google-services.json.")
+            return
+        }
         val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             override fun onVerificationCompleted(credential: PhoneAuthCredential) {
                 onAutoVerified(credential)
@@ -214,7 +246,7 @@ object AuthManager {
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to clear credential state: ${e.message}")
                 } finally {
-                    Firebase.auth.signOut()
+                    runCatching { Firebase.auth.signOut() }
                     onSignOutComplete()
                 }
             }
